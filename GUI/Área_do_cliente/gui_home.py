@@ -189,7 +189,7 @@ def executar_janela_home(janela_home):
 
     botão_sobre_nós = Button(
         frame_destaque,
-        text="ⓘ Sóbre nós",
+        text="ⓘ Sobre nós",
         font=("Ubuntu", 11, "bold"),
         fg="white",
         bg="black",
@@ -220,7 +220,9 @@ def executar_janela_home(janela_home):
 
 # ─────────────────── Opc1 - Consultar Voos ───────────────────
 
-    opc_consultar = Button(
+    from GUI_conexões.home__consultar_voos import home__consultar_voos
+
+    opc_consultar_voo = Button(
         frame_opcoes,
         text="✈︎\nConsultar Voos",
         font=("Arial", 11, "bold"),
@@ -228,13 +230,21 @@ def executar_janela_home(janela_home):
         bg="white"
     )
 
-    opc_consultar.grid(
+    opc_consultar_voo.grid(
         row=0,
         column=0,
         sticky="nsew",
         pady=(0, 5),
         ipady=15
     )
+
+    opc_consultar_voo.bind(
+        "<Button-1>",
+        lambda event: home__consultar_voos(janela_home)
+    )
+
+
+
 
 # ─────────────────── Opc2 - Minhas reservas ───────────────────
 
@@ -294,8 +304,3 @@ def executar_janela_home(janela_home):
 
 
 
-
-if __name__ == "__main__":
-    janela = Tk()
-    executar_janela_home(janela)
-    janela.mainloop()    

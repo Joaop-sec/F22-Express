@@ -371,7 +371,7 @@ def executar_janela_consultar_voos(consultar_voos):
     )
 
 
-# ─────────────────── Nenhum Voo Encontrado ───────────────────
+# ─────────────────── Botão Voltar ───────────────────
 
 
     botão_voltar = Button(

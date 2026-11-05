@@ -105,7 +105,7 @@ def executar_janela_sobre_nos(janela_sobre):
 
     conteudo = Frame(
         documento,
-        bg="red",
+        bg=BRANCO,
         padx=30,
         pady=28
     )
