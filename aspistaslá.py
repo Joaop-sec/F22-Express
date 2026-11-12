@@ -1,14 +1,37 @@
+import os
 import pandas as pd
 import sqlite3
 import urllib.request
 
-url = "https://davidmegginson.github.io/ourairports-data/runways.csv"
-urllib.request.urlretrieve(url, "runways.csv")
+os.makedirs("data", exist_ok=True)
 
-df = pd.read_csv("runways.csv")
+url_aeroportos = "https://davidmegginson.github.io/ourairports-data/airports.csv"
+url_pistas = "https://davidmegginson.github.io/ourairports-data/runways.csv"
+
+print("Baixando arquivos de aeroportos e pistas...")
+urllib.request.urlretrieve(url_aeroportos, "airports.csv")
+urllib.request.urlretrieve(url_pistas, "runways.csv")
+
+df_aeroportos = pd.read_csv("airports.csv")
+df_pistas = pd.read_csv("runways.csv")
 
 conn = sqlite3.connect("data/bank.bd")
 cursor = conn.cursor()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS aeroportos (
+    id INTEGER PRIMARY KEY,
+    ident TEXT UNIQUE,
+    iata_code TEXT,
+    type TEXT,
+    name TEXT,
+    municipality TEXT,
+    iso_country TEXT,
+    latitude REAL,
+    longitude REAL,
+    elevation_ft REAL
+)
+""")
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS pistas (
@@ -28,7 +51,32 @@ CREATE TABLE IF NOT EXISTS pistas (
 )
 """)
 
-for _, row in df.iterrows():
+tipos_aceitos = {"large_airport", "medium_airport", "small_airport"}
+
+for _, row in df_aeroportos.iterrows():
+    if row["type"] not in tipos_aceitos:
+        continue
+    if pd.isna(row["latitude_deg"]) or pd.isna(row["longitude_deg"]):
+        continue
+    cursor.execute("""
+    INSERT OR REPLACE INTO aeroportos (
+        id, ident, iata_code, type, name, municipality, iso_country,
+        latitude, longitude, elevation_ft
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        row["id"],
+        row["ident"],
+        row["iata_code"] if pd.notna(row["iata_code"]) else None,
+        row["type"],
+        row["name"],
+        row["municipality"] if pd.notna(row["municipality"]) else "",
+        row["iso_country"] if pd.notna(row["iso_country"]) else "",
+        row["latitude_deg"],
+        row["longitude_deg"],
+        row["elevation_ft"] if pd.notna(row["elevation_ft"]) else None
+    ))
+
+for _, row in df_pistas.iterrows():
     if pd.isna(row['le_latitude_deg']) or pd.isna(row['le_longitude_deg']):
         continue
     cursor.execute("""
@@ -54,4 +102,4 @@ for _, row in df.iterrows():
 
 conn.commit()
 conn.close()
-print("Importação concluída.")
+print("Importação de aeroportos e pistas concluída.")

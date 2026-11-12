@@ -1,10 +1,18 @@
 from services.pista_service import PistaService
 from services.torre_service import verificar_ocupacao_pista
 
-def exibir_menu_pistas():
-    opcao = input("""
+PISTAS_RESERVADAS = set()
+
+
+def exibir_menu_pistas(aeroporto_ativo=None):
+    cabecalho = (
+        f"PISTAS - {aeroporto_ativo.ident} ({aeroporto_ativo.name})"
+        if aeroporto_ativo
+        else "GERENCIAMENTO DE PISTAS"
+    )
+    opcao = input(f"""
 =========================================
-          GERENCIAMENTO DE PISTAS
+  {cabecalho}
 =========================================
 
 1 - Ver pistas disponíveis
@@ -16,64 +24,96 @@ def exibir_menu_pistas():
 0 - Voltar
 
 =========================================
-Escolha uma opção: """)
+Escolha uma opção: """).strip()
     return opcao
 
-def visualizar_pistas_disponiveis():
-    """Lista todas as pistas cadastradas (limitado a 100 para não sobrecarregar)."""
+
+def _obter_pistas_alvo(service, aeroporto_ativo=None):
+    if aeroporto_ativo is not None:
+        return service.buscar_por_aeroporto(aeroporto_ativo.ident), aeroporto_ativo.ident
+
+    icao = input("Código ICAO do aeroporto (ex: SBGR): ").strip().upper()
+    if not icao:
+        return [], None
+    return service.buscar_por_aeroporto(icao), icao
+
+
+def visualizar_pistas_disponiveis(aeroporto_ativo=None):
+
     service = PistaService()
-    pistas = service.listar_todas(limite=100)
+    pistas, icao = _obter_pistas_alvo(service, aeroporto_ativo)
     if not pistas:
-        print("\nNenhuma pista cadastrada.")
+        print(f"\nNenhuma pista cadastrada para {icao or 'o aeroporto informado'}.")
         return
-    print("\n--- PISTAS DISPONÍVEIS ---")
+
+    print(f"\n--- PISTAS EM {icao} ---")
     for p in pistas:
-        status = "Fechada" if p.closed else "Aberta"
+        if p.closed:
+            status = "Fechada"
+        elif p.id in PISTAS_RESERVADAS:
+            status = "Reservada"
+        else:
+            status = "Aberta"
         print(f"  ID: {p.id} | {p.ident} | {p.length_ft}ft | {p.surface} | {status}")
 
+
 def reservar_pista():
-    """Reserva uma pista (muda status para ocupada)."""
+
     try:
         id_pista = int(input("ID da pista a reservar: "))
     except ValueError:
         print("ID inválido.")
         return
+
     service = PistaService()
     pista = service.buscar_por_id(id_pista)
     if not pista:
         print("Pista não encontrada.")
         return
+    if pista.closed:
+        print(f"A pista {pista.ident} ({pista.airport_ident}) está fechada e não pode ser reservada.")
+        return
+    if id_pista in PISTAS_RESERVADAS:
+        print(f"A pista {pista.ident} ({pista.airport_ident}) já está reservada.")
+        return
 
-    print(f"Pista {pista.ident} reservada com sucesso (simulação).")
+    PISTAS_RESERVADAS.add(id_pista)
+    print(f"Pista {pista.ident} ({pista.airport_ident}) reservada com sucesso.")
+
 
 def liberar_pista():
-    """Libera uma pista (muda status para livre)."""
+
     try:
         id_pista = int(input("ID da pista a liberar: "))
     except ValueError:
         print("ID inválido.")
         return
+
     service = PistaService()
     pista = service.buscar_por_id(id_pista)
     if not pista:
         print("Pista não encontrada.")
         return
-    print(f"Pista {pista.ident} liberada (simulação).")
+
+    PISTAS_RESERVADAS.discard(id_pista)
+    print(f"Pista {pista.ident} ({pista.airport_ident}) liberada.")
+
 
 def visualizar_fila_aeronaves():
-    """Exibe uma fila simulada de aeronaves aguardando (futuro)."""
+
     print("\nFuncionalidade em desenvolvimento...")
 
-def visualizar_pistas_ocupadas():
-    """Verifica, usando a OpenSky, quais pistas estão ocupadas no momento."""
+
+def visualizar_pistas_ocupadas(aeroporto_ativo=None):
+
     service = PistaService()
-    pistas = service.listar_todas(limite=50)  # limite para não sobrecarregar
+    pistas, icao = _obter_pistas_alvo(service, aeroporto_ativo)
     if not pistas:
-        print("\nNenhuma pista cadastrada.")
+        print(f"\nNenhuma pista cadastrada para {icao or 'o aeroporto informado'}.")
         return
-    print("\n--- PISTAS OCUPADAS (DADOS EM TEMPO REAL) ---")
+
+    print(f"\n--- STATUS DAS PISTAS EM {icao} (TEMPO REAL) ---")
     for p in pistas:
-        # Usa a cabeceira 1 como referência
         ocupantes, erro = verificar_ocupacao_pista(p.le_lat, p.le_lon)
         if erro:
             print(f"  Pista {p.ident}: erro ao verificar - {erro}")
@@ -86,12 +126,13 @@ def visualizar_pistas_ocupadas():
             for v in ocupantes:
                 print(f"    - {v['callsign']} a {v['dist']:.2f} km, alt {v['baro_altitude']} m")
 
-def gerenciar_pistas():
-    """Função principal que controla o loop do menu de pistas."""
+
+def gerenciar_pistas(aeroporto_ativo=None):
+
     while True:
-        opcao = exibir_menu_pistas()
+        opcao = exibir_menu_pistas(aeroporto_ativo)
         if opcao == '1':
-            visualizar_pistas_disponiveis()
+            visualizar_pistas_disponiveis(aeroporto_ativo)
         elif opcao == '2':
             reservar_pista()
         elif opcao == '3':
@@ -99,7 +140,7 @@ def gerenciar_pistas():
         elif opcao == '4':
             visualizar_fila_aeronaves()
         elif opcao == '5':
-            visualizar_pistas_ocupadas()
+            visualizar_pistas_ocupadas(aeroporto_ativo)
         elif opcao == '0':
             break
         else:

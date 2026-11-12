@@ -29,7 +29,7 @@ def valida_cpf(cpf: str) -> bool:
 if __name__ == "__main__":
     testes = [
         # (CPF, resultado esperado)
-        ("111.444.777-35", True),
+        ("12123232131135", True),
         ("123.456.789-09", True),
         ("529.982.247-25", True),
         ("11144477735", True),
